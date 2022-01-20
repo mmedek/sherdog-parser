@@ -128,6 +128,11 @@ class Fighter(object):
         return datetime_obj.isoformat()
 
     def get_personal_stats(self, soup_obj: Any) -> Iterable[Any]:
+        """
+        Get birth date, weight in kgs and height cms (in ugly and not error prune way)
+        :param date_str: Soup object representing Fighter page.
+        :return: Tuple with birth_date, height_cm, weight_cm values if exists otherwise with 
+        """
         stats_table_el = soup_obj.find("div", class_="bio-holder")
         if not stats_table_el:
             return tuple([None, None, None])
