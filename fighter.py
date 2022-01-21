@@ -1,12 +1,9 @@
-import requests
 import datetime
-
-from pprint import pformat
-from typing import Optional, Any, List, Iterable
+import requests
 
 from bs4 import BeautifulSoup
+from typing import Optional, Any, List, Iterable, Dict
 
-from fight import Fight
 
 class Fighter(object):
     """Fighter class - creates fighter instance based on fighter's Sherdog profile or a given parameters."""
@@ -44,12 +41,10 @@ class Fighter(object):
         self.associations = associations
         self.weight_class = weight_class
         self.style = style
-
+        self.fights = None
+        self.soup_obj = None
         if download:
-            soup_obj = self.scrape_stats()
-            fights = Fight.get_fights(soup_obj=soup_obj, fighter_a_index=self.fighter_index)
-            print(fights)
-
+            self.soup_obj = self.scrape_stats()
     def scrape_stats(self) -> Any:
         """
         Scrape all statistics about Fighter and fill fighter instance.
@@ -60,7 +55,9 @@ class Fighter(object):
         soup_obj = BeautifulSoup(page_content, features="html.parser")
         # fill up Fighter instance with data mentioned on Sherdog
         self.fullname = self.get_attribute_by_class(soup_obj, "fn")
-        self.nickname = self.get_attribute_by_class(soup_obj, "nickname")
+        nickname_el = self.get_attribute_by_class(soup_obj, "nickname")
+        if nickname_el:
+            self.nickname = nickname_el.replace("\"", "")
         self.nationality = soup_obj.find("strong", itemprop="nationality").get_text()
         self.locality = self.get_attribute_by_class(soup_obj, "locality")
         birth_date, height_cm, weight_kg = self.get_personal_stats(soup_obj)
@@ -170,4 +167,33 @@ class Fighter(object):
         return attr_val
 
     def __repr__(self) -> str:
-        return pformat(vars(self), indent=4, width=1)
+        fighter_str = f"""
+-----------
+{self.fullname} "{self.nickname}" / index={self.fighter_index}
+{self.url}
+Birth day: {self.birth_date} | Nationality: {self.nationality} | Locality: {self.locality}
+Fighting at: {self.associations} | style: {self.style} | weight-class: {self.weight_class}
+Weighting: {self.weight_kg} kg with height: {self.height_cm} cm
+-----------
+        """
+        return fighter_str
+
+    def to_dict(self) -> Dict[str, Optional[Any]]:
+        """
+        Build Dictionary from Fighter object.
+        :return: dictionary with parameters of Figter object.
+        """
+        return {
+            "fullname": self.fullname,
+            "index": self.fighter_index,
+            "url": self.url,
+            "nickname": self.nickname,
+            "birthDate": self.birth_date,
+            "nationality": self.nationality,
+            "locality": self.locality,
+            "weightKg": self.weight_kg,
+            "heightCm": self.height_cm,
+            "associations": self.associations,
+            "weight_class": self.weight_class,
+            "style": self.style
+        }

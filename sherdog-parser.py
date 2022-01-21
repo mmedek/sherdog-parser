@@ -7,6 +7,7 @@ import json
 from typing import Any, Dict
 
 from fighter import Fighter
+from fight import Fight
 
 # Initializes logging file.
 logging.basicConfig(
@@ -29,7 +30,9 @@ def scrape_all_fighters() -> None:
     # scraper will be done after there were 10 non-existing sites (indexes) in a row.
     while (fail_counter <= 10):
         fighter_obj = Fighter(fighter_index=fighter_index, download=True)  # creating fighter's instance object.
-        print(str(fighter_obj))
+        fights = Fight.get_fights(soup_obj=fighter_obj.soup_obj, fighter_a_index=fighter_obj.fighter_index)
+        for fight in fights:
+            print(fight.to_dict())
         if True:
             fail_counter = 0  # resetting fail counter after finding valid page(index) for a fighter.
         else:

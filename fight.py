@@ -1,7 +1,8 @@
 import datetime
 
 from pprint import pformat
-from typing import Any, Optional, List
+from typing import Any, Optional, List, Dict
+
 
 class Fight(object):
     """Fight class - creates fight instance with data about the fight - winner, referee, etc."""
@@ -22,10 +23,10 @@ class Fight(object):
         general_decision: Optional[str] = None,
         specific_decision: Optional[str] = None,
         round: int = -1,
-        specific_time: Optional[str] = None,
+        specific_time: int = -1,
         title_fight: bool = False,
         weight_class: Optional[str] = None,
-        type_of_fight: str = None,
+        fight_type: str = None,
         result: Optional[str] = None
     ) -> None:
 
@@ -40,7 +41,7 @@ class Fight(object):
         self.round = round
         self.title_fight = title_fight
         self.weight_class = weight_class
-        self.type_of_fight = type_of_fight
+        self.fight_type = fight_type
         self.result = result
 
     @staticmethod
@@ -61,7 +62,10 @@ class Fight(object):
         date_str_el = tds[2].find("span", class_="sub_line")
         date_str = None
         if date_str_el:
-            date_str = datetime.datetime.strptime(date_str_el.get_text(), "%b / %d / %Y")
+            try:
+                date_str = datetime.datetime.strptime(date_str_el.get_text(), "%b / %d / %Y")
+            except:
+                print(f"Failed to get date of fights from {date_str_el.get_text()}")
         win_by = tds[3].find("b").get_text().split("(")[0].strip()
         # get reason of fight stoppage from <td class="winby"><b>KO (Punches)</b><br/><span class="sub_line"></span></td>
         win_by_specific_el = tds[3].find("b")
@@ -95,15 +99,37 @@ class Fight(object):
         section_els = soup_obj.find_all("section")[1:]
         for section in section_els:
             for fight_type in Fight.FIGHT_TYPES:
+                fight_type_str = fight_type.split("-")[-1].strip()
                 if fight_type in section.get_text():
                     trs = section.find_all("tr")[1:]
                     for tr in trs:
                         tds = tr.find_all("td")
                         fight = Fight.get_fight_from_row(tds)
-                        fight.fight_type = fight_type
+                        fight.fight_type = fight_type_str
                         fight.fighter_a_index = fighter_a_index
                         fights.append(fight)
         return fights
 
     def __repr__(self) -> str:
         return pformat(vars(self), indent=4, width=1)
+
+    def to_dict(self) -> Dict[str, Optional[Any]]:
+        """
+        Build Dictionary from Fight object.
+        :return: dictionary with parameters of Fight object.
+        """
+        return {
+            "fighterIndexA": self.fighter_a_index,
+            "fighterIndexB": self.fighter_b_index,
+            "eventIndex": self.event_index,
+            "date": self.date,
+            "weightClass": self.weight_class,
+            "fightType": self.fight_type,
+            "referee": self.referee,
+            "result": self.result,
+            "generalDecision": self.general_decision,
+            "specificDecision": self.specific_decision,
+            "specificTime": self.specific_time,
+            "round": self.round,
+            "titleFight": self.title_fight
+        }
