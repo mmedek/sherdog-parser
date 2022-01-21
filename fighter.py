@@ -18,6 +18,7 @@ class Fighter(object):
         fullname: Optional[str] = None,
         nickname: Optional[str] = None,
         birth_date: Optional[Any] = None,
+        death_date: Optional[Any] = None,
         weight_kg: Optional[str] = None,
         height_cm: Optional[str] = None,
         locality: Optional[str] = None,
@@ -34,6 +35,7 @@ class Fighter(object):
         self.fullname = fullname
         self.nickname = nickname
         self.birth_date = birth_date
+        self.death_date = death_date
         self.weight_kg = weight_kg
         self.height_cm = height_cm
         self.locality = locality
@@ -60,8 +62,9 @@ class Fighter(object):
             self.nickname = nickname_el.replace("\"", "")
         self.nationality = soup_obj.find("strong", itemprop="nationality").get_text()
         self.locality = self.get_attribute_by_class(soup_obj, "locality")
-        birth_date, height_cm, weight_kg = self.get_personal_stats(soup_obj)
+        birth_date, death_date, height_cm, weight_kg = self.get_personal_stats(soup_obj)
         self.birth_date = birth_date
+        self.death_date = death_date
         self.weight_kg = weight_kg
         self.height_cm = height_cm
 
@@ -131,29 +134,37 @@ class Fighter(object):
         """
         Get birth date, weight in kgs and height cms (in ugly and not error prune way)
         :param date_str: Soup object representing Fighter page.
-        :return: Tuple with birth_date, height_cm, weight_cm values if exists otherwise with 
+        :return: Tuple with birth_date, death_date, height_cm, weight_cm values if exists otherwise with None
         """
         stats_table_el = soup_obj.find("div", class_="bio-holder")
         if not stats_table_el:
             return tuple([None, None, None])
         trs = stats_table_el.find_all("tr")
-        # all stats in format X / Y\n and I am interested in the second value
-        # first processed row is about age / birth date
+        """
+        all stats in format X / Y\n and I am interested in the second value
+        first processed row is about age / birth date
+        """
         birth_date_str = trs[0].get_text()
         birth_date = None
         if "N/A" not in birth_date_str:
             birth_date = self.get_normalized_data(birth_date_str.split("/")[-1].replace("\n", "").strip())
+        death_date = None
+        SHIFTED_INDEX = 1
+        if len(trs) == 4:
+            SHIFTED_INDEX = 2
+            death_date_str = trs[1].get_text().replace("DIED", "").split("/")[-1].replace("\n", "").strip()
+            death_date = self.get_normalized_data(death_date_str)
         # second row is about height ' / height cm
-        height_str = trs[1].get_text()
+        height_str = trs[SHIFTED_INDEX].get_text()
         height_cm = None
         if "N/A" not in height_str:
             height_cm = float(height_str.split("/")[-1].replace("\n", "").replace("cm", "").strip())
         # third row is about weight lbs / height kg
-        weight_str = trs[2].get_text()
+        weight_str = trs[SHIFTED_INDEX+1].get_text()
         weight_cm = None
         if "N/A" not in weight_str:
             weight_cm = float(weight_str.split("/")[-1].replace("\n", "").replace("kg", "").strip())
-        return tuple([birth_date, height_cm, weight_cm])
+        return tuple([birth_date, death_date, height_cm, weight_cm])
 
     def get_attribute_by_class(self, soup_obj: Any, class_name: str) -> Optional[str]:
         """
@@ -189,6 +200,7 @@ Weighting: {self.weight_kg} kg with height: {self.height_cm} cm
             "url": self.url,
             "nickname": self.nickname,
             "birthDate": self.birth_date,
+            "deathDate": self.death_date,
             "nationality": self.nationality,
             "locality": self.locality,
             "weightKg": self.weight_kg,

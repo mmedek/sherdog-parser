@@ -71,12 +71,12 @@ class Fight(object):
         win_by_specific_el = tds[3].find("b")
         win_by_specific_str = None
         if "(" in win_by_specific_el.get_text():
-            win_by_specific_str = win_by_specific_el.get_text().split("(")[-1][0:-1].strip()
+            win_by_specific_str = win_by_specific_el.get_text().split("(")[-1].replace(")", "").strip()
         win_by_specific = win_by_specific_str
         # <a href="/referee/Dan-Miragliotta-21">Dan Miragliotta</a>
         referee = None
-        if tds[3].find("a"):
-            referee = tds[3].a["href"].split("-")[-1]
+        if tds[3].span.get_text():
+            referee = tds[3].span.get_text().strip()
         round_ = int(tds[4].get_text())
         time = Fight.convert_to_seconds(tds[5].get_text())
 
