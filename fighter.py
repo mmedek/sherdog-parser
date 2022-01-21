@@ -2,11 +2,11 @@ import requests
 import datetime
 
 from pprint import pformat
-
 from typing import Optional, Any, List, Iterable
 
 from bs4 import BeautifulSoup
 
+from fight import Fight
 
 class Fighter(object):
     """Fighter class - creates fighter instance based on fighter's Sherdog profile or a given parameters."""
@@ -36,20 +36,21 @@ class Fighter(object):
         self.url = url
         self.fullname = fullname
         self.nickname = nickname
-        self.birth_date = birth_date # normalize
+        self.birth_date = birth_date
         self.weight_kg = weight_kg
         self.height_cm = height_cm
         self.locality = locality
-
         self.nationality = nationality
         self.associations = associations
         self.weight_class = weight_class
         self.style = style
 
         if download:
-            self.scrape_stats()
+            soup_obj = self.scrape_stats()
+            fights = Fight.get_fights(soup_obj=soup_obj, fighter_a_index=self.fighter_index)
+            print(fights)
 
-    def scrape_stats(self) -> None:
+    def scrape_stats(self) -> Any:
         """
         Scrape all statistics about Fighter and fill fighter instance.
         """
@@ -70,6 +71,8 @@ class Fighter(object):
         self.associations = self.get_associations(soup_obj)
         self.weight_class = self.get_weight_class(soup_obj)
         self.style = self.get_style(soup_obj)
+
+        return soup_obj
 
     def get_style(self, soup_obj: Any) -> Optional[str]:
         """"
