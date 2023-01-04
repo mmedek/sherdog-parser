@@ -3,6 +3,7 @@ import requests
 
 from bs4 import BeautifulSoup
 from typing import Optional, Any, List, Iterable, Dict
+from fake_useragent import UserAgent
 
 
 class Fighter(object):
@@ -13,6 +14,7 @@ class Fighter(object):
     def __init__(
         self,
         fighter_index: int = DEFAULT_INDEX,
+        proxy_session: Optional[Any] = None,
         download: bool = False,
         url: Optional[str] = None,
         fullname: Optional[str] = None,
@@ -45,22 +47,43 @@ class Fighter(object):
         self.style = style
         self.fights = None
         self.soup_obj = None
+        self.valid = True
+        self.user_agent = UserAgent()
         if download:
-            self.soup_obj = self.scrape_stats()
-    def scrape_stats(self) -> Any:
+            self.soup_obj = self.scrape_stats(proxy_session)
+
+    def scrape_stats(self, proxy_session: Any) -> Any:
         """
         Scrape all statistics about Fighter and fill fighter instance.
         """
         self.url = f"https://www.sherdog.com/fighter/index?id={self.fighter_index}"
-        fighter_page = requests.get(self.url)
+        if not proxy_session:
+            fighter_page = requests.get(self.url, headers={"User-Agent": self.user_agent.chrome})
+        else:
+            fighter_page = proxy_session.get(self.url, headers={"User-Agent": self.user_agent.chrome})
+        if not fighter_page.ok:
+            self.valid = False
+            return None
         page_content = fighter_page.content
         soup_obj = BeautifulSoup(page_content, features="html.parser")
+        # if page is not valid return Fighter with valid field == False otherwise continue
+        section_title_el = soup_obj.find("div", class_="tiled_bg latest_features")
+        if not section_title_el:
+            self.valid = False
+            return soup_obj
+        if "ERROR 404" in section_title_el.get_text():
+            self.valid = False
+            return soup_obj
         # fill up Fighter instance with data mentioned on Sherdog
         self.fullname = self.get_attribute_by_class(soup_obj, "fn")
         nickname_el = self.get_attribute_by_class(soup_obj, "nickname")
         if nickname_el:
-            self.nickname = nickname_el.replace("\"", "")
-        self.nationality = soup_obj.find("strong", itemprop="nationality").get_text()
+            self.nickname = nickname_el.replace('"', "")
+        nationality_el = soup_obj.find("strong", itemprop="nationality")
+        nationality = None
+        if nationality_el:
+            nationality = nationality_el.get_text()
+        self.nationality = nationality
         self.locality = self.get_attribute_by_class(soup_obj, "locality")
         birth_date, death_date, height_cm, weight_kg = self.get_personal_stats(soup_obj)
         self.birth_date = birth_date
@@ -75,16 +98,12 @@ class Fighter(object):
         return soup_obj
 
     def get_style(self, soup_obj: Any) -> Optional[str]:
-        """"
+        """ "
         Get style from Soup object.
         :param soup_obj: Soup object representing Fighter page.
         :return: Style of fighter if exists.
         """
-        style_el = (
-            soup_obj
-            .find("div", class_="association-class")
-            .select_one("b")
-        )
+        style_el = soup_obj.find("div", class_="association-class").select_one("b")
 
         if not style_el:
             return None
@@ -92,15 +111,13 @@ class Fighter(object):
         return style_el.get_text()
 
     def get_weight_class(self, soup_obj: Any) -> Optional[str]:
-        """"
+        """ "
         Get weight class from Soup object.
         :param soup_obj: Soup object representing Fighter page.
         :return: Weight-class of fighter if exists.
         """
-        weight_class_el = (
-            soup_obj
-            .find("div", class_="association-class")
-            .select_one("a[href*=/stats/fightfinder?weightclass]")
+        weight_class_el = soup_obj.find("div", class_="association-class").select_one(
+            "a[href*=/stats/fightfinder?weightclass]"
         )
 
         if not weight_class_el:
@@ -109,7 +126,7 @@ class Fighter(object):
         return weight_class_el.get_text()
 
     def get_associations(self, soup_obj: Any) -> List[str]:
-        """"
+        """ "
         Get associations from Soup object.
         :param soup_obj: Soup object representing Fighter page.
         :return: List of found associations.
@@ -160,7 +177,7 @@ class Fighter(object):
         if "N/A" not in height_str:
             height_cm = float(height_str.split("/")[-1].replace("\n", "").replace("cm", "").strip())
         # third row is about weight lbs / height kg
-        weight_str = trs[SHIFTED_INDEX+1].get_text()
+        weight_str = trs[SHIFTED_INDEX + 1].get_text()
         weight_cm = None
         if "N/A" not in weight_str:
             weight_cm = float(weight_str.split("/")[-1].replace("\n", "").replace("kg", "").strip())
@@ -207,5 +224,5 @@ Weighting: {self.weight_kg} kg with height: {self.height_cm} cm
             "heightCm": self.height_cm,
             "associations": self.associations,
             "weight_class": self.weight_class,
-            "style": self.style
+            "style": self.style,
         }

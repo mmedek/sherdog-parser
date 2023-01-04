@@ -7,11 +7,7 @@ from typing import Any, Optional, List, Dict
 class Fight(object):
     """Fight class - creates fight instance with data about the fight - winner, referee, etc."""
 
-    FIGHT_TYPES = [
-        "FIGHT HISTORY - PRO",
-        "FIGHT HISTORY - PRO EXHIBITION",
-        "FIGHT HISTORY - AMATEUR"
-    ]
+    FIGHT_TYPES = ["FIGHT HISTORY - PRO", "FIGHT HISTORY - PRO EXHIBITION", "FIGHT HISTORY - AMATEUR"]
 
     def __init__(
         self,
@@ -27,7 +23,7 @@ class Fight(object):
         title_fight: bool = False,
         weight_class: Optional[str] = None,
         fight_type: str = None,
-        result: Optional[str] = None
+        result: Optional[str] = None,
     ) -> None:
 
         self.fighter_a_index = fighter_a_index
@@ -46,11 +42,15 @@ class Fight(object):
 
     @staticmethod
     def convert_to_seconds(str_time: str) -> int:
-        minutes_seconds_arr = str_time.split(":")
-        if len(minutes_seconds_arr) < 2:
+        try:
+            minutes_seconds_arr = str_time.split(":")
+            if len(minutes_seconds_arr) < 2:
+                return -1
+            seconds = int(minutes_seconds_arr[0]) * 60
+            seconds += int(minutes_seconds_arr[1])
+        except:
+            # N/A
             return -1
-        seconds = int(minutes_seconds_arr[0]) * 60
-        seconds += int(minutes_seconds_arr[1])
         return seconds
 
     @staticmethod
@@ -76,7 +76,7 @@ class Fight(object):
         # <a href="/referee/Dan-Miragliotta-21">Dan Miragliotta</a>
         referee = None
         if tds[3].span.get_text():
-            referee = tds[3].span.get_text().strip()
+            referee = tds[3].span.get_text()
         round_ = int(tds[4].get_text())
         time = Fight.convert_to_seconds(tds[5].get_text())
 
@@ -89,7 +89,7 @@ class Fight(object):
             specific_decision=None if win_by_specific == "N/A" else win_by_specific,
             round=-1 if round_ == "0" else int(round_),
             specific_time=time,
-            result=result
+            result=result,
         )
 
     @staticmethod
@@ -131,5 +131,5 @@ class Fight(object):
             "specificDecision": self.specific_decision,
             "specificTime": self.specific_time,
             "round": self.round,
-            "titleFight": self.title_fight
+            "titleFight": self.title_fight,
         }
